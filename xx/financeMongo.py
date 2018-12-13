@@ -1,5 +1,4 @@
-"""
-finance 的 mongo 版本
+nce 的 mongo 版本
 """
 import datetime
 import pandas
@@ -39,56 +38,55 @@ class Finance(AbstractJZData):
 
         # 格式化参数
         stock_list = convert_11code(stock_list)
-        _factor_table = factor_table(factor, self.factor2table)
-        collection, field = list(_factor_table.items())[0]
-        field = field[0].name
+        table = factor_table(factor, self.factor2table)
         start_date = convert2datetime(start_date)
         end_date = convert2datetime(end_date)
         end_date = end_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
 
-        # merge 停牌时间
-        index = TradeCalendar().calendar(start_date.strftime("%Y%m%d"),
-                                         end_date.strftime("%Y%m%d"))
+        # 查询停牌时间
+        calendar = TradeCalendar().calendar(start_date.strftime("%Y%m%d"),
+                                            end_date.strftime("%Y%m%d"))
+        trading_calendar = calendar['date'][calendar['trade']]
+        trading_calendar_index = pandas.DataFrame(trading_calendar,
+                                                  columns=['index']).set_index('index')
+        rett = trading_calendar_index.copy()
 
-        trading_index = index[index['trade']]['date']
-        trading_index = pandas.DataFrame(trading_index)
-        trading_index.columns = ['date']
-        trading_index = trading_index.set_index('date')
-        rett = trading_index.copy()
+        # 确定要查询的集合和字段值
+        collection, field = list(table.items())[0]
+        field = field[0].name
+        snap = ['SecuCode', 'PubDate', field]
+        doc_snap = {k: 1 for k in snap}
+        doc_snap["_id"] = 0
 
+        # 查询
         db_coll = connect_coll(collection, self._db)
-        if not self.full_collection[collection]:
-            snap = ['SecuCode', 'PubDate', field]
-            doc_snap = {k: 1 for k in snap}
-            doc_snap["_id"] = 0
+        ret = db_coll.find({'SecuCode': {'$in': stock_list},
+                            "PubDate": {"$gte": start_date, "$lte": end_date}}, doc_snap)
 
-            ret = db_coll.find(
-                {'SecuCode': {'$in': stock_list},
-                 "PubDate": {"$gte": start_date, "$lte": end_date}}, doc_snap)
+        # 生成查询结果
+        # pandas_ret = pandas.DataFrame(list(ret))
+        data = pandas.DataFrame(list(ret))
 
-        pandas_ret = pandas.DataFrame(list(ret))
+        # 对查询结果进行规范化
+        if not data.empty:
+            data[snap[1]] = data[snap[1]].map(lambda x: x.strftime('%Y-%m-%d'))
+            data = data[snap]
+            data.columns = ['stock', 'time', field]
+            data = pandas.crosstab(data['time'], data['stock'], values=data[field], aggfunc='last')
 
-        # 查询聚合
-        if not pandas_ret.empty:
-            pandas_ret[snap[1]] = pandas_ret[snap[1]].map(lambda x: x.strftime('%Y-%m-%d'))
-            pandas_ret = pandas_ret[snap]
-            pandas_ret.columns = ['stock', 'time', field]
-            pandas_ret = pandas.crosstab(pandas_ret['time'], pandas_ret['stock'],
-                                         values=pandas_ret[field], aggfunc='last')
-            ret = pandas_ret.merge(trading_index, left_index=True, right_index=True, how='outer')
+        # 更新 rett
+        rett = data.merge(rett, left_index=True, right_index=True, how='outer')
+        rett = rett.fillna(method='pad')  # 先向后填充数据
+        rett = rett.ix[trading_calendar_index.index]  # 再以日历限制一次日期
 
-            if not ret.empty:
-                if not self.full_collection[collection]:
-                    ret = ret.fillna(method='pad')  # 先向后填充数据
-                    ret = ret.ix[trading_index.index]  # 再以日历限制一次日期
+        to_concat_ret = pandas.DataFrame(dict(zip(stock_list, [1] * len(stock_list))),index=['1'])
+        rett = pandas.concat([rett, to_concat_ret])
+        rett = rett.drop(['1'])
 
-                to_concat_ret = pandas.DataFrame(dict(zip(stock_list, [1] * len(stock_list))),
-                                                 index=['1'])
-                concat_ret = pandas.concat([ret, to_concat_ret])
-                rett = concat_ret.drop(['1'])
-                rett = rett.astype(float)
-                rett = rett.to_records()
-                rett.dtype.names = ['date'] + list(rett.dtype.names)[1:]
+        # 整理结果
+        rett = rett.astype(float)
+        rett = rett.to_records()
+        rett.dtype.names = ['date'] + list(rett.dtype.names)[1:]
 
         # 暂时返回structured array，后面可以让用户选择返回pandas
         # 固定了因子的表格，表的行索引是股票，列索引是时间
@@ -96,114 +94,103 @@ class Finance(AbstractJZData):
 
     def fix_symbol(self, stock: str, factors: list or f, start_date: datetime.date or str,
                    end_date: datetime.date or str):
-
         # 格式化参数
+        stock = convert_11code(stock)[0]
         table = factor_table(factors, self.factor2table)
         start_date = convert2datetime(start_date)
         end_date = convert2datetime(end_date)
         end_date = end_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
 
-        # merge 停牌时间
+        # 查询停牌时间
         calendar = TradeCalendar().calendar(start_date.strftime("%Y%m%d"),
-                                         end_date.strftime("%Y%m%d"))
+                                            end_date.strftime("%Y%m%d"))
         trading_calendar = calendar['date'][calendar['trade']]
         trading_calendar_index = pandas.DataFrame(trading_calendar,
                                                   columns=['index']).set_index('index')
-        ret = trading_calendar_index.copy()
+        rett = trading_calendar_index.copy()
 
+        # 确定要查询的集合和字段值
+        _year = int(start_date.strftime("%Y")) - 1
+        start_date = datetime.datetime(_year, 1, 1, 0, 0, 0)
         for collection in table:
-            _db = connect_db()
-            db_coll = connect_coll(collection, _db)
             factors = factor_name_list(table[collection])
-            snap = [None, ]
+            snap = ['PubDate', ]
             snap.extend(factors)
-            if self.full_collection[collection]:
-                pass
+            doc_snap = {k: 1 for k in snap}
+            doc_snap["_id"] = 0
 
-            else:
-                _year = int(start_date.strftime("%Y")) - 1
-                start_date = datetime.datetime(_year, 1, 1, 0, 0, 0)
-                snap[0] = 'PubDate'
-                doc_snap = {k: 1 for k in snap}
-                doc_snap["_id"] = 0
-                data = db_coll.find({'SecuCode': stock,
-                                     "PubDate": {"$gte": start_date, "$lte": end_date}},
-                                    doc_snap)
+            # 查询
+            db_coll = connect_coll(collection, self._db)
+            data = db_coll.find({'SecuCode': stock,
+                                 "PubDate": {"$gte": start_date, "$lte": end_date}}, doc_snap)
 
+            # 生成查询结果
             data = pandas.DataFrame(list(data))
 
+            # 对查询结果进行规范化
             if not data.empty:
                 data[snap[0]] = data[snap[0]].map(lambda x: x.strftime('%Y-%m-%d'))
                 data = data[snap]
                 data = data.set_index(snap[0])
 
-                # 日历填充
-                ret = ret.merge(data, left_index=True, right_index=True, how='outer')
+            # 循环更新 rett
+            rett = rett.merge(data, left_index=True, right_index=True, how='outer')
+            rett[factors] = rett[factors].fillna(method='pad')  # 先向后填充数据
+            rett = rett.ix[trading_calendar_index.index]  # 再以日历限制一次日期
 
-                if not self.full_collection[collection]:
-                    ret[factors] = ret[factors].fillna(method='pad')
-                    ret = ret.ix[trading_calendar_index.index]
+        # 整理结果
+        rett = rett.astype(float).to_records()
+        rett.dtype.names = ['date'] + list(rett.dtype.names)[1:]
 
-        ret = ret.astype(float)
-        ret = ret.to_records()
-        ret.dtype.names = ['date'] + list(ret.dtype.names)[1:]
-
-        return numpy.array(ret)
+        return numpy.array(rett)
 
     def fix_time(self, stock_list: list or str, factors: list or f,
                  trade_date: datetime.date or str):
-
-        # 参数格式化
+        # 格式化参数
+        stock_list = convert_11code(stock_list)
         table = factor_table(factors, self.factor2table)
         start_date = convert2datetime(trade_date)
         end_date = start_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
 
         # 补充缺失股票
-        ret = pandas.DataFrame(stock_list, columns=['stock']).set_index('stock')
+        rett = pandas.DataFrame(stock_list, columns=['stock']).set_index('stock')
 
+        # 确定要查询的集合和字段值
+        _year = int(start_date.strftime("%Y")) - 1
+        start_date = datetime.datetime(_year, 1, 1, 0, 0, 0)
         for collection in table:
-            _db = connect_db()
-            db_coll = connect_coll(collection, _db)
             factors = factor_name_list(table[collection])
-
-            snap = [None, ]
+            snap = ['SecuCode', 'PubDate',]
             snap.extend(factors)
+            doc_snap = {k: 1 for k in snap}
+            doc_snap["_id"] = 0
 
-            data = None
+            # 查询
+            db_coll = connect_coll(collection, self._db)
+            data = db_coll.find({'SecuCode': {'$in': stock_list},
+                                 "PubDate": {"$gte": start_date, "$lte": end_date}}, doc_snap)
 
-            if self.full_collection[collection]:
-                pass
+            # 生成查询结果
+            data = pandas.DataFrame(list(data))
 
+            # 对查询结果进行规范化
+            if not data.empty:
+                data = data[snap].set_index('PubDate')
+                data.columns = ['stock'] + factors
+            if len(data):
+                data = data.groupby('stock')
+                data = pandas.DataFrame([i[1].iloc[-1] for i in data]).set_index('stock')
             else:
-                start_date = int(start_date.strftime("%Y")) - 1
-                start_date = datetime.datetime(start_date, 1, 1, 0, 0, 0)
-                snap = ['SecuCode', 'PubDate'] + factors
-                doc_snap = {k: 1 for k in snap}
-                doc_snap["_id"] = 0
-                data = db_coll.find(
-                    {'SecuCode': {'$in': stock_list},
-                     "PubDate": {"$gte": start_date, "$lte": end_date}}, doc_snap)
-                data = pandas.DataFrame(list(data))
-                print("*"*99)
-                print(data)
+                data = data.set_index('stock')
 
-                if not data.empty:
-                    data = data[snap].set_index('PubDate')
-                    data.columns = ['stock'] + factors
+            # 循环更新 rett
+            rett = rett.merge(data, left_index=True, right_index=True, how='outer')
 
-                if len(data) != 0:
-                    data = data.groupby('stock')
-                    data = pandas.DataFrame([i[1].iloc[-1] for i in data]).set_index('stock')
-                else:
-                    data = data.set_index('stock')
-            ret = ret.merge(data, left_index=True, right_index=True, how='outer')
+        # 整理结果
+        rett = rett.astype(float).to_records()
+        rett.dtype.names = ['stock'] + list(rett.dtype.names)[1:]
 
-        # 最后整理结果
-        ret = ret.astype(float)
-        ret = ret.to_records()
-        ret.dtype.names = ['stock'] + list(ret.dtype.names)[1:]
-
-        return numpy.array(ret)
+        return numpy.array(rett)
 
 
 if __name__ == "__main__":
@@ -221,10 +208,10 @@ if __name__ == "__main__":
 
     # res1 = rundemo.fix_factor(stock_list, ff, s1, s2)
     # print(res1)
-
+    #
     # res2 = rundemo.fix_symbol("000702.XSHE", f_list, s1, s2)
     # print(res2)
 
-    # res3 = rundemo.fix_time(stock_list, f_list, trade_date)
-    # print(res3)
+    res3 = rundemo.fix_time(stock_list, f_list, trade_date)
+    print(res3)
 
