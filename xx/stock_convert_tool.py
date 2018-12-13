@@ -23,7 +23,7 @@ def little11code(x):
     return x
 
 
-def convert_11code(self, codes: list or str):
+def convert_11code(codes: list or str):
     """
     # 转换为 600001.XSHG 格式
     :param self:
@@ -34,10 +34,10 @@ def convert_11code(self, codes: list or str):
         return []
     if type(codes) == str:
         codes = [codes]
-    if re.match(self.stock_format[1], codes[0]):  # 600001.XSHG
+    if re.match(stock_format[1], codes[0]):  # 600001.XSHG
         pass
-    elif re.match(self.stock_format[0], codes[0]):  # SH600001
-        codes = list(map(lambda x: (x[2:8] + self.little11code(x[:2])), codes))
+    elif re.match(stock_format[0], codes[0]):  # SH600001
+        codes = list(map(lambda x: (x[2:8] + little11code(x[:2])), codes))
     else:
         system_log.info(codes)
         system_log.debug("股票格式不对")
@@ -56,7 +56,7 @@ def little8code(x):
     return x
 
 
-def convert_8code(codes: list or str):
+def convert_8code(codes: list or str):  # [000001.XSHE, 000702.XSHE]-->[SZ000001, SZ000702]
     """
     转换为 SH600001 格式
     :param codes:
@@ -67,6 +67,7 @@ def convert_8code(codes: list or str):
     if type(codes) == str:
         codes = [codes]
     if re.match(stock_format[1], codes[0]):  # 600001.XSHG
+        # .XSHE --> SZ
         codes = list(map(lambda x: little8code(x[6:]) + x[:6], codes))
     elif re.match(stock_format[0], codes[0]):  # SH600001
         pass
