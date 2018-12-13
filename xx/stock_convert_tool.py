@@ -56,7 +56,7 @@ def little8code(x):
     return x
 
 
-def convert_8code(self, codes: list or str):
+def convert_8code(codes: list or str):
     """
     转换为 SH600001 格式
     :param codes:
@@ -66,9 +66,9 @@ def convert_8code(self, codes: list or str):
         return []
     if type(codes) == str:
         codes = [codes]
-    if re.match(self.stock_format[1], codes[0]):  # 600001.XSHG
-        codes = list(map(lambda x: self.little8code(x[6:]) + x[:6], codes))
-    elif re.match(self.stock_format[0], codes[0]):  # SH600001
+    if re.match(stock_format[1], codes[0]):  # 600001.XSHG
+        codes = list(map(lambda x: little8code(x[6:]) + x[:6], codes))
+    elif re.match(stock_format[0], codes[0]):  # SH600001
         pass
     else:
         system_log.info(codes)
