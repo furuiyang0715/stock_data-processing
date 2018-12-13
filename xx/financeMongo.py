@@ -10,7 +10,7 @@ import os
 sys.path.append(os.getcwd())
 
 from xx.generate_map_factor2table import connect_db, generate_table_field_list, connect_coll
-from xx.stock_convert_tool import convert_11code
+from xx.stock_convert_tool import convert_11code, little11code
 from xx.distribution_factor2table import factor_table, factor_name_list
 from xx.time_tool import convert2datetime
 from xx.trade_calendar import TradeCalendar
@@ -36,13 +36,7 @@ class Finance(AbstractJZData):
 
     def fix_factor(self, stock_list: list, factor: f or list, start_date: str or datetime.date,
                    end_date: str or datetime.date):
-        """
-        :param stock_list:
-        :param factor:
-        :param start_date:
-        :param end_date:
-        :return:
-        """
+
         # 格式化参数
         stock_list = convert_11code(stock_list)
         _factor_table = factor_table(factor, self.factor2table)
@@ -74,7 +68,7 @@ class Finance(AbstractJZData):
 
         pandas_ret = pandas.DataFrame(list(ret))
 
-        # 查询聚合 
+        # 查询聚合
         if not pandas_ret.empty:
             pandas_ret[snap[1]] = pandas_ret[snap[1]].map(lambda x: x.strftime('%Y-%m-%d'))
             pandas_ret = pandas_ret[snap]
@@ -102,13 +96,7 @@ class Finance(AbstractJZData):
 
     def fix_symbol(self, stock: str, factors: list or f, start_date: datetime.date or str,
                    end_date: datetime.date or str):
-        """
-        :param stock:
-        :param factors:
-        :param start_date:
-        :param end_date:
-        :return:
-        """
+
         # 格式化参数
         table = factor_table(factors, self.factor2table)
         start_date = convert2datetime(start_date)
@@ -164,7 +152,58 @@ class Finance(AbstractJZData):
 
     def fix_time(self, stock_list: list or str, factors: list or f,
                  trade_date: datetime.date or str):
-        pass
+
+        # 参数格式化
+        table = factor_table(factors, self.factor2table)
+        start_date = convert2datetime(trade_date)
+        end_date = start_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
+
+        # 补充缺失股票
+        ret = pandas.DataFrame(stock_list, columns=['stock']).set_index('stock')
+
+        for collection in table:
+            _db = connect_db()
+            db_coll = connect_coll(collection, _db)
+            factors = factor_name_list(table[collection])
+
+            snap = [None, ]
+            snap.extend(factors)
+
+            data = None
+
+            if self.full_collection[collection]:
+                pass
+
+            else:
+                start_date = int(start_date.strftime("%Y")) - 1
+                start_date = datetime.datetime(start_date, 1, 1, 0, 0, 0)
+                snap = ['SecuCode', 'PubDate'] + factors
+                doc_snap = {k: 1 for k in snap}
+                doc_snap["_id"] = 0
+                data = db_coll.find(
+                    {'SecuCode': {'$in': stock_list},
+                     "PubDate": {"$gte": start_date, "$lte": end_date}}, doc_snap)
+                data = pandas.DataFrame(list(data))
+                print("*"*99)
+                print(data)
+
+                if not data.empty:
+                    data = data[snap].set_index('PubDate')
+                    data.columns = ['stock'] + factors
+
+                if len(data) != 0:
+                    data = data.groupby('stock')
+                    data = pandas.DataFrame([i[1].iloc[-1] for i in data]).set_index('stock')
+                else:
+                    data = data.set_index('stock')
+            ret = ret.merge(data, left_index=True, right_index=True, how='outer')
+
+        # 最后整理结果
+        ret = ret.astype(float)
+        ret = ret.to_records()
+        ret.dtype.names = ['stock'] + list(ret.dtype.names)[1:]
+
+        return numpy.array(ret)
 
 
 if __name__ == "__main__":
@@ -176,11 +215,16 @@ if __name__ == "__main__":
     stock_list = ["000001.XSHE", "000002.XSHE", "000543.XSHE"]
     s1 = datetime.datetime(2016, 1, 1)
     s2 = datetime.datetime(2017, 1, 1)
-    f = f("SubtotalOperateCashInflow")
-    res1 = rundemo.fix_factor(stock_list, f, s1, s2)
-    print(res1)
+    f_list = [f("SubtotalOperateCashInflow"), f("CashEquivalents"), f("OtherCashInRelatedOperate")]
+    ff = f("SubtotalOperateCashInflow")
+    trade_date = datetime.datetime(2017, 5, 1)
 
-    # f_list = [f("SubtotalOperateCashInflow"), f("CashEquivalents"), f("OtherCashInRelatedOperate")]
+    # res1 = rundemo.fix_factor(stock_list, ff, s1, s2)
+    # print(res1)
+
     # res2 = rundemo.fix_symbol("000702.XSHE", f_list, s1, s2)
     # print(res2)
+
+    # res3 = rundemo.fix_time(stock_list, f_list, trade_date)
+    # print(res3)
 
