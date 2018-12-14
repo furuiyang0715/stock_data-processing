@@ -1,22 +1,24 @@
 """
 finance 的 mongo 版本
 """
+# 自测使用的代码段
+import sys
+_path = "/home/ruiyang/company_projects/demo/xx"
+while _path in sys.path:
+    sys.path.remove(_path)
+
+path_ = "/home/ruiyang/company_projects/demo"
+if not path_ in sys.path:
+    sys.path.append(path_)
+
 import datetime
 import pandas
 import numpy
 
-import sys
-
-
-if not "/home/ruiyang/company_projects/demo" in sys.path:
-    sys.path.append("/home/ruiyang/company_projects/demo")
-
-# print(sys.path)
-
 from xx import connect_db, connect_coll
 from xx.mapping import generate_factor2collection_map
 from xx.full_tool import convert_11code
-from xx.distribution import factor_table, factor_name_list
+from xx.distribution import gen_factor_name_list, gen_collection2factor_map
 from xx.full_tool import convert2datetime
 from xx.JZdataMixin import TradeCalendar
 from xx.factor import f
@@ -45,7 +47,7 @@ class Finance(AbstractJZData):
 
         # 格式化参数
         stock_list = convert_11code(stock_list)
-        table = factor_table(factor, self.factor2collection)
+        collection2factor_map = gen_collection2factor_map(factor, self.factor2collection)
         start_date = convert2datetime(start_date)
         end_date = convert2datetime(end_date)
         end_date = end_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
@@ -59,7 +61,7 @@ class Finance(AbstractJZData):
         rett = trading_calendar_index.copy()
 
         # 确定要查询的集合和字段值
-        collection, field = list(table.items())[0]
+        collection, field = list(collection2factor_map.items())[0]
         field = field[0].name
         snap = ['SecuCode', 'PubDate', field]
         doc_snap = {k: 1 for k in snap}
@@ -102,7 +104,7 @@ class Finance(AbstractJZData):
                    end_date: datetime.date or str):
         # 格式化参数
         stock = convert_11code(stock)[0]
-        table = factor_table(factors, self.factor2collection)
+        collection2factor_map = gen_collection2factor_map(factors, self.factor2collection)
         start_date = convert2datetime(start_date)
         end_date = convert2datetime(end_date)
         end_date = end_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
@@ -118,10 +120,10 @@ class Finance(AbstractJZData):
         # 确定要查询的集合和字段值
         _year = int(start_date.strftime("%Y")) - 1
         start_date = datetime.datetime(_year, 1, 1, 0, 0, 0)
-        for collection in table:
-            factors = factor_name_list(table[collection])
+        for collection in collection2factor_map:
+            factor_name_list = gen_factor_name_list(collection2factor_map[collection])
             snap = ['PubDate', ]
-            snap.extend(factors)
+            snap.extend(factor_name_list)
             doc_snap = {k: 1 for k in snap}
             doc_snap["_id"] = 0
 
@@ -141,7 +143,7 @@ class Finance(AbstractJZData):
 
             # 循环更新 rett
             rett = rett.merge(data, left_index=True, right_index=True, how='outer')
-            rett[factors] = rett[factors].fillna(method='pad')  # 先向后填充数据
+            rett[factor_name_list] = rett[factor_name_list].fillna(method='pad')  # 先向后填充数据
             rett = rett.ix[trading_calendar_index.index]  # 再以日历限制一次日期
 
         # 整理结果
@@ -154,7 +156,7 @@ class Finance(AbstractJZData):
                  trade_date: datetime.date or str):
         # 格式化参数
         stock_list = convert_11code(stock_list)
-        table = factor_table(factors, self.factor2collection)
+        collection2factor_map = gen_collection2factor_map(factors, self.factor2collection)
         start_date = convert2datetime(trade_date)
         end_date = start_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
 
@@ -164,10 +166,10 @@ class Finance(AbstractJZData):
         # 确定要查询的集合和字段值
         _year = int(start_date.strftime("%Y")) - 1
         start_date = datetime.datetime(_year, 1, 1, 0, 0, 0)
-        for collection in table:
-            factors = factor_name_list(table[collection])
+        for collection in collection2factor_map:
+            factor_name_list = gen_factor_name_list(collection2factor_map[collection])
             snap = ['SecuCode', 'PubDate',]
-            snap.extend(factors)
+            snap.extend(factor_name_list)
             doc_snap = {k: 1 for k in snap}
             doc_snap["_id"] = 0
 
@@ -182,7 +184,7 @@ class Finance(AbstractJZData):
             # 对查询结果进行规范化
             if not data.empty:
                 data = data[snap].set_index('PubDate')
-                data.columns = ['stock'] + factors
+                data.columns = ['stock'] + factor_name_list
             if len(data):
                 data = data.groupby('stock')
                 data = pandas.DataFrame([i[1].iloc[-1] for i in data]).set_index('stock')
@@ -200,12 +202,6 @@ class Finance(AbstractJZData):
 
 
 if __name__ == "__main__":
-    sys.path.remove("/home/ruiyang/company_projects/demo/xx")
-    # sys.path.remove("/home/ruiyang/company_projects/demo")
-    # print("--"*100)
-    # print(sys.path)
-    # print("--"*100)
-
     rundemo = Finance()
     stock_list = ["000001.XSHE", "000002.XSHE", "000543.XSHE"]
     s1 = datetime.datetime(2016, 1, 1)
@@ -215,13 +211,19 @@ if __name__ == "__main__":
     trade_date = datetime.datetime(2017, 5, 1)
 
     res1 = rundemo.fix_factor(stock_list, ff, s1, s2)
-    # print(res1)
+    print(res1)
+    print()
+    print()
 
     res2 = rundemo.fix_symbol("000702.XSHE", f_list, s1, s2)
-    # print(res2)
+    print(res2)
+    print()
+    print()
 
     res3 = rundemo.fix_time(stock_list, f_list, trade_date)
-    # print(res3)
+    print(res3)
+    print()
+    print()
 
     pass
 

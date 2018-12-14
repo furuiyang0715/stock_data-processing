@@ -2,14 +2,14 @@ from .factor import f
 from rqalpha.utils.logger import system_log
 
 
-def factor_table(factors: list or f, factor2collection):
+def gen_collection2factor_map(factors: list or f, factor2collection):
     """
     用来分配因子到对应的集合（可能是sub_trident，也可能是数据库的collection和table）
     :param factors: 因子名
     :param factor2collection: 因子到集合的映射
     :return:
     """
-    table = dict()
+    collection2factor_map = dict()
     if type(factors) == f:
         factors = [factors]
     elif type(factors) != list:
@@ -28,25 +28,25 @@ def factor_table(factors: list or f, factor2collection):
                 collection = factor2collection[factor.name]['collection']
                 factor = f(factor2collection[factor.name]['field'], factor.params)
 
-            if collection in table:  # 集合名已经存在于 table 中
-                table[collection] = table[collection] + [factor]
+            if collection in collection2factor_map:  # 集合名已经存在于 table 中
+                collection2factor_map[collection] = collection2factor_map[collection] + [factor]
             else:
-                table[collection] = [factor]
+                collection2factor_map[collection] = [factor]
         else:
             system_log.debug('未收录因子' + factor.name + '，或您没有获取该因子权限，请联系管理员。')
 
-    return table
+    return collection2factor_map
 
 
-def factor_name_list(factors: list or f):
+def gen_factor_name_list(factors: list or f):
     """
     将factor对象列表转换为名称列表
     :param factors:
     :return:
     """
     if type(factors) == list:
-        factors = list(map(lambda x: x.name, factors))
+        factor_name_list = list(map(lambda x: x.name, factors))
     else:
-        factors = [factors.name]
-    return factors
+        factor_name_list = [factors.name]
+    return factor_name_list
 
