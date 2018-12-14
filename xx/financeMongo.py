@@ -6,7 +6,6 @@ import sys
 _path = "/home/ruiyang/company_projects/demo/xx"
 while _path in sys.path:
     sys.path.remove(_path)
-
 path_ = "/home/ruiyang/company_projects/demo"
 if not path_ in sys.path:
     sys.path.append(path_)
@@ -16,13 +15,14 @@ import pandas
 import numpy
 
 from xx import connect_db, connect_coll
-from xx.mapping import gen_factor2collection_map, full_bool_collection_map
+from xx.mapping import gen_factor2collection_map
 from xx.full_tool import convert_11code
 from xx.distribution import gen_factor_name_list, gen_collection2factor_map
 from xx.full_tool import convert2datetime
 from xx.JZdataMixin import TradeCalendar
 from xx.factor import f
 from xx.interface import AbstractJZData
+from xx.full_config import full_bool_collection_map
 
 
 class Finance(AbstractJZData):
@@ -30,7 +30,7 @@ class Finance(AbstractJZData):
         self._db = connect_db()
         self.bool_collection = full_bool_collection_map
         self.factor2collection_map = gen_factor2collection_map(self.bool_collection)
-        
+
     def fix_factor(self, stock_list: list, factor: f or list, start_date: str or datetime.date,
                    end_date: str or datetime.date):
 

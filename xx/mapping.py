@@ -45,28 +45,16 @@ def gen_factor2collection_map(bool_collection_map):
     return factor2collection_map
 
 
-# 总配置项
-# True-->表示已经过处理的集合; False-->表示原始集合
-# 在具体文件中的配置项是其子集
-full_bool_collection_map = {"comcn_balancesheet": False, "comcn_cashflowsheet": False,
-                            "comcn_incomesheet": False, "comcn_qcashflowsheet": False,
-                            "comcn_qincomesheet": False}
-
-# 集合名 --> 标识名的映射
-# 注释： 如果一个集合名对应多个标识名 该配置项会被具体文件中的配置项覆盖
-collection2mark_map = {"comcn_balancesheet": "finance", "comcn_cashflowsheet": "finance",
-                       "comcn_incomesheet": "finance", "comcn_qcashflowsheet": "finance",
-                       "comcn_qincomesheet": "finance"}
-
-
-# 总配置项
-# {因子:集合名} 的映射
-full_factor2collection_map = gen_factor2collection_map(full_bool_collection_map)
-
-
-if __name__ == "__main__":
-    print(full_factor2collection_map)
-    for (f_name, collection_name) in full_factor2collection_map.items():
-        print(f_name, "-->", collection_name)
-        print()
+def gen_factor2mark_map(factor2collection_map, collection2mark_map):
+    """
+    输入{因子:集合} 以及 {集合:标识} 的映射
+    生成{因子:标识} 的映射
+    :param factor2collection_map:
+    :return:
+    """
+    factor2mark_map = dict()
+    for f_name, collection_name in factor2collection_map.items():
+        mark_name = collection2mark_map.get(collection_name, None)
+        factor2mark_map.update({f_name: mark_name})
+    return factor2mark_map
 
