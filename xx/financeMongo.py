@@ -15,10 +15,10 @@ if not "/home/ruiyang/company_projects/demo" in sys.path:
 
 from xx import connect_db, connect_coll
 from xx.mapping import generate_factor2collection_map
-from xx.stock_convert_tool import convert_11code
+from xx.full_tool import convert_11code
 from xx.distribution import factor_table, factor_name_list
-from xx.time_tool import convert2datetime
-from xx.trade_calendar import TradeCalendar
+from xx.full_tool import convert2datetime
+from xx.JZdataMixin import TradeCalendar
 from xx.factor import f
 from xx.interface import AbstractJZData
 
