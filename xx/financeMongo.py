@@ -38,16 +38,16 @@ class Finance(AbstractJZData):
             "comcn_qcashflowsheet": False,
             "comcn_qincomesheet": False
         }
-        self.factor2collection = dict()
+        self.factor2collection_map = dict()
         for collection in self.bool_collection.keys():
-            self.factor2collection.update(generate_factor2collection_map(collection))
+            self.factor2collection_map.update(generate_factor2collection_map(collection))
 
     def fix_factor(self, stock_list: list, factor: f or list, start_date: str or datetime.date,
                    end_date: str or datetime.date):
 
         # 格式化参数
         stock_list = convert_11code(stock_list)
-        collection2factor_map = gen_collection2factor_map(factor, self.factor2collection)
+        collection2factor_map = gen_collection2factor_map(factor, self.factor2collection_map)
         start_date = convert2datetime(start_date)
         end_date = convert2datetime(end_date)
         end_date = end_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
@@ -104,7 +104,7 @@ class Finance(AbstractJZData):
                    end_date: datetime.date or str):
         # 格式化参数
         stock = convert_11code(stock)[0]
-        collection2factor_map = gen_collection2factor_map(factors, self.factor2collection)
+        collection2factor_map = gen_collection2factor_map(factors, self.factor2collection_map)
         start_date = convert2datetime(start_date)
         end_date = convert2datetime(end_date)
         end_date = end_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
@@ -156,7 +156,7 @@ class Finance(AbstractJZData):
                  trade_date: datetime.date or str):
         # 格式化参数
         stock_list = convert_11code(stock_list)
-        collection2factor_map = gen_collection2factor_map(factors, self.factor2collection)
+        collection2factor_map = gen_collection2factor_map(factors, self.factor2collection_map)
         start_date = convert2datetime(trade_date)
         end_date = start_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
 
