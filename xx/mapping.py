@@ -1,11 +1,24 @@
-# 用于生成各类映射关系
+# 用于测试的临时代码段
+import sys
+_path = "/home/ruiyang/company_projects/demo/xx"
+while _path in sys.path:
+    sys.path.remove(_path)
+
+path_ = "/home/ruiyang/company_projects/demo"
+if not path_ in sys.path:
+    sys.path.append(path_)
+
+
+# 该文件用于生成各类映射关系
 from xx import connect_db, connect_coll
-# from xx.financeMongo import Finance  # 循环导入
 
 
-def generate_factor2collection_map(coll_name, db_name="datacenter"):
+def _gen_factor2collection_map(coll_name, db_name="datacenter"):
     """
-    生成因子和集合的映射
+    输入 集合名
+    生成 {因子：集合} 映射
+    :param coll_name:
+    :param db_name:
     :return:
     """
     _db = connect_db(db_name)
@@ -14,34 +27,46 @@ def generate_factor2collection_map(coll_name, db_name="datacenter"):
     field_name_list = list(item.keys())
     field_name_list.remove("id")
     field_name_list.remove("_id")
-    db_name_list = [coll_name] * len(field_name_list)
-    factor2collection = dict(zip(field_name_list, db_name_list))
-    return factor2collection
+    coll_name_list = [coll_name] * len(field_name_list)
+    factor2collection_map = dict(zip(field_name_list, coll_name_list))
+    return factor2collection_map
 
 
-def generate_factor2collection(bool_collection_map):
-    factor2collection = dict()
+def gen_factor2collection_map(bool_collection_map):
+    """
+    通过配置项 bool_collection_map
+    生成 {因子：集合} 映射
+    :param bool_collection_map:
+    :return:
+    """
+    factor2collection_map = dict()
     for collection in bool_collection_map.keys():
-        factor2collection.update(generate_factor2collection_map(collection))
-    return factor2collection
+        factor2collection_map.update(_gen_factor2collection_map(collection))
+    return factor2collection_map
 
 
-# 标识名 --> 子三戟叉处理器的映射
-# mark2subprocesser = {"finance": Finance(),}
-
+# 总配置项
+# True-->表示已经过处理的集合; False-->表示原始集合
+# 在具体文件中的配置项是其子集
+full_bool_collection_map = {"comcn_balancesheet": False, "comcn_cashflowsheet": False,
+                            "comcn_incomesheet": False, "comcn_qcashflowsheet": False,
+                            "comcn_qincomesheet": False}
 
 # 集合名 --> 标识名的映射
+# 注释： 如果一个集合名对应多个标识名 该配置项会被具体文件中的配置项覆盖
 collection2mark_map = {"comcn_balancesheet": "finance", "comcn_cashflowsheet": "finance",
                        "comcn_incomesheet": "finance", "comcn_qcashflowsheet": "finance",
                        "comcn_qincomesheet": "finance"}
 
 
-# 所有的集合名：True-->表示已经过处理的集合; False-->表示原始集合
-full_bool_collection_map = {"comcn_balancesheet": False, "comcn_cashflowsheet": False,
-                            "comcn_incomesheet": False, "comcn_qcashflowsheet": False,
-                            "comcn_qincomesheet": False}
+# 总配置项
+# {因子:集合名} 的映射
+full_factor2collection_map = gen_factor2collection_map(full_bool_collection_map)
 
 
-# 字段名 --> 集合名的映射
-full_factor2collection = generate_factor2collection(full_bool_collection_map)
+if __name__ == "__main__":
+    print(full_factor2collection_map)
+    for (f_name, collection_name) in full_factor2collection_map.items():
+        print(f_name, "-->", collection_name)
+        print()
 
