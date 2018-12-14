@@ -16,7 +16,7 @@ import pandas
 import numpy
 
 from xx import connect_db, connect_coll
-from xx.mapping import generate_factor2collection_map
+from xx.mapping import gen_factor2collection_map, full_bool_collection_map
 from xx.full_tool import convert_11code
 from xx.distribution import gen_factor_name_list, gen_collection2factor_map
 from xx.full_tool import convert2datetime
@@ -28,20 +28,9 @@ from xx.interface import AbstractJZData
 class Finance(AbstractJZData):
     def __init__(self):
         self._db = connect_db()
-
-        # 改造过的数据-->True
-        # 原始数据-->False
-        self.bool_collection = {
-            "comcn_balancesheet": False,
-            "comcn_cashflowsheet": False,
-            "comcn_incomesheet": False,
-            "comcn_qcashflowsheet": False,
-            "comcn_qincomesheet": False
-        }
-        self.factor2collection_map = dict()
-        for collection in self.bool_collection.keys():
-            self.factor2collection_map.update(generate_factor2collection_map(collection))
-
+        self.bool_collection = full_bool_collection_map
+        self.factor2collection_map = gen_factor2collection_map(self.bool_collection)
+        
     def fix_factor(self, stock_list: list, factor: f or list, start_date: str or datetime.date,
                    end_date: str or datetime.date):
 
