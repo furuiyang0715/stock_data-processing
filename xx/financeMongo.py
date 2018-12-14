@@ -1,16 +1,22 @@
-nce 的 mongo 版本
+"""
+finance 的 mongo 版本
 """
 import datetime
 import pandas
 import numpy
 
 import sys
-import os
-sys.path.append(os.getcwd())
 
-from xx.generate_map_factor2table import connect_db, generate_table_field_list, connect_coll
-from xx.stock_convert_tool import convert_11code, little11code
-from xx.distribution_factor2table import factor_table, factor_name_list
+
+if not "/home/ruiyang/company_projects/demo" in sys.path:
+    sys.path.append("/home/ruiyang/company_projects/demo")
+
+# print(sys.path)
+
+from xx import connect_db, connect_coll
+from xx.mapping import generate_factor2collection_map
+from xx.stock_convert_tool import convert_11code
+from xx.distribution import factor_table, factor_name_list
 from xx.time_tool import convert2datetime
 from xx.trade_calendar import TradeCalendar
 from xx.factor import f
@@ -21,24 +27,25 @@ class Finance(AbstractJZData):
     def __init__(self):
         self._db = connect_db()
 
-        # 数据库中的财务因子分为两类，一类是改造过的数据-->True，一类是原始数据-->False
-        self.full_collection = {
+        # 改造过的数据-->True
+        # 原始数据-->False
+        self.bool_collection = {
             "comcn_balancesheet": False,
             "comcn_cashflowsheet": False,
             "comcn_incomesheet": False,
             "comcn_qcashflowsheet": False,
             "comcn_qincomesheet": False
         }
-        self.factor2table = dict()
-        for collection in self.full_collection.keys():
-            self.factor2table.update(generate_table_field_list(collection))
+        self.factor2collection = dict()
+        for collection in self.bool_collection.keys():
+            self.factor2collection.update(generate_factor2collection_map(collection))
 
     def fix_factor(self, stock_list: list, factor: f or list, start_date: str or datetime.date,
                    end_date: str or datetime.date):
 
         # 格式化参数
         stock_list = convert_11code(stock_list)
-        table = factor_table(factor, self.factor2table)
+        table = factor_table(factor, self.factor2collection)
         start_date = convert2datetime(start_date)
         end_date = convert2datetime(end_date)
         end_date = end_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
@@ -64,7 +71,6 @@ class Finance(AbstractJZData):
                             "PubDate": {"$gte": start_date, "$lte": end_date}}, doc_snap)
 
         # 生成查询结果
-        # pandas_ret = pandas.DataFrame(list(ret))
         data = pandas.DataFrame(list(ret))
 
         # 对查询结果进行规范化
@@ -96,7 +102,7 @@ class Finance(AbstractJZData):
                    end_date: datetime.date or str):
         # 格式化参数
         stock = convert_11code(stock)[0]
-        table = factor_table(factors, self.factor2table)
+        table = factor_table(factors, self.factor2collection)
         start_date = convert2datetime(start_date)
         end_date = convert2datetime(end_date)
         end_date = end_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
@@ -148,7 +154,7 @@ class Finance(AbstractJZData):
                  trade_date: datetime.date or str):
         # 格式化参数
         stock_list = convert_11code(stock_list)
-        table = factor_table(factors, self.factor2table)
+        table = factor_table(factors, self.factor2collection)
         start_date = convert2datetime(trade_date)
         end_date = start_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
 
@@ -194,9 +200,11 @@ class Finance(AbstractJZData):
 
 
 if __name__ == "__main__":
-    import sys
-    import os
-    sys.path.append(os.getcwd())
+    sys.path.remove("/home/ruiyang/company_projects/demo/xx")
+    # sys.path.remove("/home/ruiyang/company_projects/demo")
+    # print("--"*100)
+    # print(sys.path)
+    # print("--"*100)
 
     rundemo = Finance()
     stock_list = ["000001.XSHE", "000002.XSHE", "000543.XSHE"]
@@ -206,12 +214,14 @@ if __name__ == "__main__":
     ff = f("SubtotalOperateCashInflow")
     trade_date = datetime.datetime(2017, 5, 1)
 
-    # res1 = rundemo.fix_factor(stock_list, ff, s1, s2)
+    res1 = rundemo.fix_factor(stock_list, ff, s1, s2)
     # print(res1)
-    #
-    # res2 = rundemo.fix_symbol("000702.XSHE", f_list, s1, s2)
+
+    res2 = rundemo.fix_symbol("000702.XSHE", f_list, s1, s2)
     # print(res2)
 
     res3 = rundemo.fix_time(stock_list, f_list, trade_date)
-    print(res3)
+    # print(res3)
+
+    pass
 
