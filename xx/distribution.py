@@ -2,7 +2,7 @@ from .factor import f
 from rqalpha.utils.logger import system_log
 
 
-def gen_collection2factor_map(factors: list or f, factor2collection_map):
+def dis_collection2factor_map(factors: list or f, factor2collection_map):
     collection2factor_map = dict()
 
     if type(factors) == f:
@@ -31,7 +31,7 @@ def gen_collection2factor_map(factors: list or f, factor2collection_map):
     return collection2factor_map
 
 
-def gen_mark2factor_map(factors: list or f, factor2mark_map):
+def dis_mark2factor_map(factors: list or f, factor2mark_map):
     mark2factor_map = dict()
 
     if type(factors) == f:

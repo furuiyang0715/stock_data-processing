@@ -12,6 +12,7 @@ stock_format = [r'^[SI][ZHX]\d{6}$',  # eg. SH600001
                 r'^\d{6}\.[A-Z]{4}$']  # eg. 600001.XSHG
 
 
+# ---------------------------------与时间转换相关的工具------------------------------------------------
 def format_date(date: str or datetime.date or datetime.datetime):
     """
     转换为 2018-10-10 的格式
@@ -105,6 +106,7 @@ def convert2datetime(date: str or datetime.date or datetime.datetime or numpy.st
     return date
 
 
+# ---------------------------------与股票格式转换相关的工具--------------------------------------------
 def little11code(x):
     """
     前缀的转换

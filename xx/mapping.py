@@ -3,7 +3,6 @@ import sys
 _path = "/home/ruiyang/company_projects/demo/xx"
 while _path in sys.path:
     sys.path.remove(_path)
-
 path_ = "/home/ruiyang/company_projects/demo"
 if not path_ in sys.path:
     sys.path.append(path_)

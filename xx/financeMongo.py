@@ -17,7 +17,7 @@ import numpy
 from xx import connect_db, connect_coll
 from xx.mapping import gen_factor2collection_map
 from xx.full_tool import convert_11code
-from xx.distribution import gen_factor_name_list, gen_collection2factor_map
+from xx.distribution import gen_factor_name_list, dis_collection2factor_map
 from xx.full_tool import convert2datetime
 from xx.JZdataMixin import TradeCalendar
 from xx.factor import f
@@ -36,7 +36,7 @@ class Finance(AbstractJZData):
 
         # 格式化参数
         stock_list = convert_11code(stock_list)
-        collection2factor_map = gen_collection2factor_map(factor, self.factor2collection_map)
+        collection2factor_map = dis_collection2factor_map(factor, self.factor2collection_map)
         start_date = convert2datetime(start_date)
         end_date = convert2datetime(end_date)
         end_date = end_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
@@ -93,7 +93,7 @@ class Finance(AbstractJZData):
                    end_date: datetime.date or str):
         # 格式化参数
         stock = convert_11code(stock)[0]
-        collection2factor_map = gen_collection2factor_map(factors, self.factor2collection_map)
+        collection2factor_map = dis_collection2factor_map(factors, self.factor2collection_map)
         start_date = convert2datetime(start_date)
         end_date = convert2datetime(end_date)
         end_date = end_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
@@ -145,7 +145,7 @@ class Finance(AbstractJZData):
                  trade_date: datetime.date or str):
         # 格式化参数
         stock_list = convert_11code(stock_list)
-        collection2factor_map = gen_collection2factor_map(factors, self.factor2collection_map)
+        collection2factor_map = dis_collection2factor_map(factors, self.factor2collection_map)
         start_date = convert2datetime(trade_date)
         end_date = start_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
 
