@@ -10,5 +10,14 @@ def DB() -> pymongo.MongoClient:
     return NONESENSE.mongocli
 
 
+def connect_db(db_name="datacenter"):
+    client = DB()
+    return client['{}'.format(db_name)]
+
+
+def connect_coll(coll_name, _db):
+    return _db['{}'.format(coll_name)]
+
+
 db = DB()
 
