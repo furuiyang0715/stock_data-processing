@@ -13,6 +13,23 @@ stock_format = [r'^[SI][ZHX]\d{6}$',  # eg. SH600001
 
 
 # ---------------------------------与时间转换相关的工具------------------------------------------------
+def yyyymmdd_date(dt: datetime) -> int:
+    return dt.year * 10000 + dt.month * 100 + dt.day
+
+
+def find_date_in_array(dt: str, array: "numpy.ndarray") -> int:
+    """
+    找到某个元素在ndarray中的位置
+    :param dt:
+    :param array:
+    :return:
+    """
+    for i, d in enumerate(array):
+        if d == dt:
+            return i
+    return -1
+
+
 def format_date(date: str or datetime.date or datetime.datetime):
     """
     转换为 2018-10-10 的格式
